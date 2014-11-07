@@ -28,11 +28,15 @@ func NewDict(keyspace string, logClient LogClient) (*Dict, error) {
   watchChan := make(chan *LogNode)
   closeChan := make(chan bool)
 
+  // Checks to see if keyspace exists, creates it if not
+  newDict.validateDirExists()
+
   // Setup watch
   go newDict.logClient.Watch(keyspace, watchChan, closeChan)
 
-  // Validate log node is as expected and force initial update
+  // Force initial update
   if err := newDict.initLocal(); err != nil {
+    close(closeChan)
     return nil, err
   }
 
@@ -62,7 +66,7 @@ func (d *Dict) Get(key string) (string, error) {
   val, exist := d.localStore[key]
 
   if !exist {
-    return "", errors.New(fmt.Sprintf("Key %s does not exist in Nameme Dict %s", key, d.keyspace))
+    return "", errors.New(fmt.Sprintf("nameme | Key %s does not exist in nameme Dict %s", key, d.keyspace))
   }
 
   return val, nil
@@ -72,6 +76,19 @@ func (d *Dict) Get(key string) (string, error) {
 func (d *Dict) Put(key string, value string) error {
   err := d.logClient.Put(d.keyspace + "/" + key, value)
   return err
+}
+
+// Checks if a directory node exists and creates it if not.
+func (d *Dict) validateDirExists() error {
+  existing, _ := d.logClient.Get(d.keyspace)
+
+  if existing == nil {
+    if err := d.logClient.PutDir(d.keyspace); err != nil {
+      return err
+    }
+  }
+
+  return nil
 }
 
 // A forced bootstrap of the local map. Used on instantiation only.

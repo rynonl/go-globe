@@ -42,6 +42,7 @@ func (e *EtcdClient) PutDir(path string) error {
 }
 
 func (e *EtcdClient) Watch(path string, watcher chan *LogNode, closer chan bool) {
+
   // Set watch with underlying client
   underlyingChan := make(chan *etcd.Response)
   go e.underlying.Watch(path, 0, true, underlyingChan, closer)
