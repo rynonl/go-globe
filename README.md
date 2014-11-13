@@ -1,8 +1,8 @@
-# nameme
+# go-globe
 
 #### This was an afternoon hack as an excuse to play with Go. Caveat emptor!
 
-Nameme is a distributed dictionary backed by a replicated log such as etcd.
+go-globe is a distributed dictionary backed by a replicated log such as etcd.
 
 Good for things like:
 * Managing dynamic configuration
@@ -22,7 +22,7 @@ in Go and I haven't explored other options for better value typing.
 
 ## Interface
 #### NewDict(keyspace string, logClient LogClient) *Dict
-Creates a new nameme.Dict and returns a pointer to it.
+Creates a new globe.Dict and returns a pointer to it.
 * *keyspace*: The keyspace in which to store data in the underlying log.
 * *logClient*: The log client(see below)
 

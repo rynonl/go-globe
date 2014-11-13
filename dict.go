@@ -1,4 +1,4 @@
-package nameme
+package globe
 
 import (
   "errors"
@@ -50,7 +50,7 @@ func NewDict(keyspace string, logClient LogClient) (*Dict, error) {
   // will appear empty until a connection is established, but the program will
   // not crash.
   if err != nil {
-    fmt.Println("nameme | Error initializing dict. Retrying.")
+    fmt.Println("globe | Error initializing dict. Retrying.")
     go func() {
       for {
         // Continues trying to validate/create keyspace. This fails silently
@@ -58,10 +58,10 @@ func NewDict(keyspace string, logClient LogClient) (*Dict, error) {
         newDict.validateDirExists()
 
         if ierr := newDict.initLocal(); ierr == nil {
-          fmt.Println("nameme | Successfully initialized dict after error")
+          fmt.Println("globe | Successfully initialized dict after error")
           return
         } else {
-          fmt.Println("nameme | Error initializing dict. Retrying.")
+          fmt.Println("globe | Error initializing dict. Retrying.")
         }
         time.Sleep(5 * time.Second)
       }
@@ -96,7 +96,7 @@ func (d *Dict) Get(key string) (string, error) {
   d.lock.Unlock()
 
   if !exist {
-    return "", errors.New(fmt.Sprintf("nameme | Key %s does not exist in nameme Dict %s", key, d.keyspace))
+    return "", errors.New(fmt.Sprintf("globe | Key %s does not exist in globe Dict %s", key, d.keyspace))
   }
 
   return val, nil

@@ -1,4 +1,4 @@
-package nameme
+package globe
 
 import (
   "errors"
@@ -25,7 +25,7 @@ func NewEtcdClient(cluster []string) *EtcdClient {
 func (e *EtcdClient) Get(path string) (*LogNode, error) {
   resp, err := e.underlying.Get(path, false, false)
 
-  if err != nil { return nil, errors.New(fmt.Sprintf("nameme | etcd | %s", err.Error())) }
+  if err != nil { return nil, errors.New(fmt.Sprintf("globe | etcd | %s", err.Error())) }
 
   node := etcdResponseToLogNode(resp)
 
@@ -59,7 +59,7 @@ func (e *EtcdClient) Watch(path string, watcher chan *LogNode, closer chan bool)
 
     // underlying client returns a nil change when etcd cluster is unreachable
     if change != nil {
-      // Convert Etcd response to nameme nodes
+      // Convert Etcd response to globe nodes
       ret := etcdResponseToLogNode(change)
       watcher <- ret
     } else {

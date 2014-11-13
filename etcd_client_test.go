@@ -1,4 +1,4 @@
-package nameme
+package globe
 
 import (
   "testing"

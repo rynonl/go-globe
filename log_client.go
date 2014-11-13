@@ -1,4 +1,4 @@
-package nameme
+package globe
 
 // Generic client interface used as a wrapper for the underyling log client.
 // See etcd_client.go for example implementatino
