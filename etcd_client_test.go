@@ -1,7 +1,9 @@
 package nameme
 
-import "testing"
-import "time"
+import (
+  "testing"
+  "time"
+)
 
 // TODO: Mock things so we don't need active etcd cluster and yucky sleep
 

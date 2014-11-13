@@ -41,6 +41,16 @@ func TestDictWatchExisting(t *testing.T) {
   }
 }
 
+func TestDictPut(t *testing.T) {
+  namemeDict := initNewTestDict("TestDictPut")
+
+  namemeDict.Put("key1", "new val")
+
+  if val, _ := namemeDict.Get("key1"); val != "new val" {
+    t.Errorf("Expected key1 to be new val but was %s", val)
+  }
+}
+
 func TestDictWatchMulti(t *testing.T) {
   namemeDict := initNewTestDict("TestDictWatchMulti")
 

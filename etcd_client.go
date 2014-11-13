@@ -1,8 +1,10 @@
 package nameme
 
-import "errors"
-import "fmt"
-import "github.com/coreos/go-etcd/etcd"
+import (
+  "errors"
+  "fmt"
+  "github.com/coreos/go-etcd/etcd"
+)
 
 // Implements LogClient
 type EtcdClient struct {
@@ -11,6 +13,7 @@ type EtcdClient struct {
 
 // Constructor
 func NewEtcdClient(cluster []string) *EtcdClient {
+
   actual := etcd.NewClient(cluster)
 
   return &EtcdClient{
@@ -30,12 +33,14 @@ func (e *EtcdClient) Get(path string) (*LogNode, error) {
 }
 
 func (e *EtcdClient) Put(path string, value string) error {
+
   _, err := e.underlying.Set(path, value, uint64(0))
 
   return err
 }
 
 func (e *EtcdClient) PutDir(path string) error {
+
   _, err := e.underlying.SetDir(path, uint64(0))
 
   return err
@@ -45,13 +50,21 @@ func (e *EtcdClient) Watch(path string, watcher chan *LogNode, closer chan bool)
 
   // Set watch with underlying client
   underlyingChan := make(chan *etcd.Response)
-  go e.underlying.Watch(path, 0, true, underlyingChan, closer)
+  go func() {
+    e.underlying.Watch(path, 0, true, underlyingChan, closer)
+  }()
 
   for {
     change := <-underlyingChan
-    // Convert Etcd response to nameme nodes
-    ret := etcdResponseToLogNode(change)
-    watcher <- ret
+
+    // underlying client returns a nil change when etcd cluster is unreachable
+    if change != nil {
+      // Convert Etcd response to nameme nodes
+      ret := etcdResponseToLogNode(change)
+      watcher <- ret
+    } else {
+      // TODO recovery mode.  re-attach watch when etcd back online.
+    }
   }
 
 }

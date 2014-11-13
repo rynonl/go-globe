@@ -4,6 +4,8 @@ import (
   "errors"
   "fmt"
   "strings"
+  "sync"
+  "time"
 )
 
 // A Key-Value dictionary backed by an distributed log
@@ -11,33 +13,59 @@ type Dict struct {
   keyspace      string
   logClient     LogClient
   localStore    map[string]string
+  closeChan     chan bool
+  lock          *sync.Mutex
 }
 
 // Constructs and returns a new dictionary.
 // The returned dict will be populated with the latest snapshot of the log
 // and automatically update the local copy of the data as it changes remotely.
 func NewDict(keyspace string, logClient LogClient) (*Dict, error) {
-  empty := make(map[string]string)
-
-  newDict := &Dict{
-    keyspace:     keyspace,
-    logClient:    logClient,
-    localStore:   empty,
-  }
 
   watchChan := make(chan *LogNode)
   closeChan := make(chan bool)
 
-  // Checks to see if keyspace exists, creates it if not
+  lock := &sync.Mutex{}
+
+  newDict := &Dict{
+    keyspace:     keyspace,
+    logClient:    logClient,
+    localStore:   map[string]string{},
+    closeChan:    closeChan,
+    lock:         lock,
+  }
+
+  // Checks to see if keyspace exists, creates it if not.
+  // Fails silently if log unreachable
   newDict.validateDirExists()
 
   // Setup watch
   go newDict.logClient.Watch(keyspace, watchChan, closeChan)
 
   // Force initial update
-  if err := newDict.initLocal(); err != nil {
-    close(closeChan)
-    return nil, err
+  err := newDict.initLocal()
+
+  // If the initial, blocking, init fails(due to log not being available)
+  // do not panic, but continue trying to init in a non-blocking way. The map
+  // will appear empty until a connection is established, but the program will
+  // not crash.
+  if err != nil {
+    fmt.Println("nameme | Error initializing dict. Retrying.")
+    go func() {
+      for {
+        // Continues trying to validate/create keyspace. This fails silently
+        // if log is not reachable
+        newDict.validateDirExists()
+
+        if ierr := newDict.initLocal(); ierr == nil {
+          fmt.Println("nameme | Successfully initialized dict after error")
+          return
+        } else {
+          fmt.Println("nameme | Error initializing dict. Retrying.")
+        }
+        time.Sleep(5 * time.Second)
+      }
+    }()
   }
 
   // Start responding to log updates
@@ -53,17 +81,19 @@ func NewDict(keyspace string, logClient LogClient) (*Dict, error) {
     }
   }()
 
-  return newDict, nil
+  return newDict, err
 }
 
 // Close the dictionary. It will no longer respond to log updates
 func (d *Dict) Close() {
-  // TODO
+  close(d.closeChan)
 }
 
 // Get value for given key. Returns error if key is not found.
 func (d *Dict) Get(key string) (string, error) {
+  d.lock.Lock()
   val, exist := d.localStore[key]
+  d.lock.Unlock()
 
   if !exist {
     return "", errors.New(fmt.Sprintf("nameme | Key %s does not exist in nameme Dict %s", key, d.keyspace))
@@ -74,6 +104,9 @@ func (d *Dict) Get(key string) (string, error) {
 
 // Put value at given key. Overwrites any existing value.
 func (d *Dict) Put(key string, value string) error {
+  // TODO: Have this optimistic consistency be optional
+  d.setLocal(key, value)
+
   err := d.logClient.Put(d.keyspace + "/" + key, value)
   return err
 }
@@ -123,14 +156,18 @@ func (d *Dict) buildDict(nodes []LogNode) map[string]string {
 
 // Merges a dict with the local version, overwriting existing keys
 func (d *Dict) setBatchLocal(batch map[string]string) {
+  d.lock.Lock()
   for key, val := range batch {
-    d.setLocal(key, val)
+    d.localStore[localKey(key)] = val
   }
+  d.lock.Unlock()
 }
 
 // Sets a single entry in the map
 func (d *Dict) setLocal(key string, val string) {
+  d.lock.Lock()
   d.localStore[localKey(key)] = val
+  d.lock.Unlock()
 }
 
 // Strips the keyspace prefix from the key name
