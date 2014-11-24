@@ -157,17 +157,19 @@ func (d *Dict) buildDict(nodes []LogNode) map[string]string {
 // Merges a dict with the local version, overwriting existing keys
 func (d *Dict) setBatchLocal(batch map[string]string) {
   d.lock.Lock()
+  defer d.lock.Unlock()
+
   for key, val := range batch {
     d.localStore[localKey(key)] = val
   }
-  d.lock.Unlock()
 }
 
 // Sets a single entry in the map
 func (d *Dict) setLocal(key string, val string) {
   d.lock.Lock()
+  defer d.lock.Unlock()
+
   d.localStore[localKey(key)] = val
-  d.lock.Unlock()
 }
 
 // Strips the keyspace prefix from the key name
